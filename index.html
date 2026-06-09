@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il Rifugio Felice</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#f8f8f8;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    height:100vh;
+}
+
+.card{
+    background:white;
+    padding:40px;
+    border-radius:20px;
+    box-shadow:0 0 20px rgba(0,0,0,.15);
+    text-align:center;
+    max-width:400px;
+}
+
+h1{
+    margin-bottom:30px;
+}
+
+p{
+    font-size:20px;
+    line-height:1.5;
+}
+
+button{
+    margin-top:30px;
+    width:100%;
+    padding:20px;
+    font-size:28px;
+    border:none;
+    border-radius:15px;
+    background:#2e7d32;
+    color:white;
+    cursor:pointer;
+}
+
+button:hover{
+    background:#1b5e20;
+}
+
+#msg{
+    margin-top:25px;
+    font-size:20px;
+    font-weight:bold;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="card">
+
+<h1>🏡 Il Rifugio Felice</h1>
+
+<p>
+Press the button below<br>
+to open the gate.
+</p>
+
+<button onclick="openGate()">
+🚪 OPEN GATE
+</button>
+
+<div id="msg"></div>
+
+</div>
+
+<script>
+
+const url="https://il-rifugio-felice-default-rtdb.europe-west1.firebasedatabase.app/gate/request_id.json";
+
+async function openGate(){
+
+document.getElementById("msg").innerHTML="Sending command...";
+
+try{
+
+const response=await fetch(url);
+
+const value=await response.json();
+
+await fetch(url,{
+method:"PUT",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify(Number(value)+1)
+});
+
+document.getElementById("msg").innerHTML="✅ Gate opening...";
+
+}
+catch(e){
+
+document.getElementById("msg").innerHTML="❌ Error";
+
+}
+
+}
+
+</script>
+
+</body>
+</html>

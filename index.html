@@ -115,7 +115,7 @@ Welcome!<br>
 Press the button below to open the gate.
 </p>
 
-  <button id="gateButton">🚪 OPEN GATE</button>
+  <button id="gateButton">🔓 OPEN GATE</button>
 
   <div id="status">Ready</div>
 </div>
@@ -149,7 +149,7 @@ button.onclick = async () => {
 
     button.classList.remove("loading");
     button.classList.add("success");
-    button.innerHTML = "✅ GATE OPENING";
+    button.innerHTML="🔓 OPENING...";
     status.innerHTML = "Gate opening...";
 
     if (navigator.vibrate) {
@@ -158,7 +158,7 @@ button.onclick = async () => {
 
   } catch(e) {
     button.classList.remove("loading");
-    button.innerHTML = "🚪 OPEN GATE";
+    button.innerHTML = "🔓 OPEN GATE";
     status.innerHTML = "Connection error";
     button.disabled = false;
     return;
@@ -173,7 +173,7 @@ button.onclick = async () => {
     if (seconds <= 0) {
       clearInterval(timer);
       button.classList.remove("success");
-      button.innerHTML = "🚪 OPEN GATE";
+      button.innerHTML = "🔓 OPEN GATE";
       status.innerHTML = "Ready";
       button.disabled = false;
     }

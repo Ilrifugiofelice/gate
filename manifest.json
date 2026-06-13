@@ -4,12 +4,5 @@
   "start_url": "/gate/",
   "display": "standalone",
   "background_color": "#f7f7f2",
-  "theme_color": "#2e7d32",
-  "icons": [
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/619/619034.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    }
-  ]
+  "theme_color": "#2e7d32"
 }

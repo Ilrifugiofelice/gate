@@ -1,60 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Il Rifugio Felice</title>
 
 <style>
+
 body{
+
     margin:0;
-    font-family:Arial,sans-serif;
-    background:#f8f8f8;
+    font-family:Arial,Helvetica,sans-serif;
+
+    background:#f4f4f4;
+
     display:flex;
     justify-content:center;
     align-items:center;
+
     height:100vh;
+
 }
 
 .card{
-    background:white;
-    padding:40px;
-    border-radius:20px;
-    box-shadow:0 0 20px rgba(0,0,0,.15);
-    text-align:center;
+
+    width:90%;
     max-width:400px;
+
+    background:white;
+
+    padding:30px;
+
+    border-radius:20px;
+
+    text-align:center;
+
+    box-shadow:0px 10px 30px rgba(0,0,0,0.15);
+
 }
 
 h1{
-    margin-bottom:30px;
+
+    margin-bottom:10px;
+
 }
 
 p{
-    font-size:20px;
-    line-height:1.5;
+
+    color:#666;
+
+    margin-bottom:30px;
+
 }
 
 button{
-    margin-top:30px;
+
     width:100%;
+
     padding:20px;
-    font-size:28px;
+
+    font-size:24px;
+
     border:none;
+
     border-radius:15px;
+
     background:#2e7d32;
+
     color:white;
+
     cursor:pointer;
+
+    transition:0.3s;
+
 }
 
-button:hover{
-    background:#1b5e20;
+button:disabled{
+
+    background:#999;
+
+    cursor:not-allowed;
+
 }
 
-#msg{
-    margin-top:25px;
-    font-size:20px;
-    font-weight:bold;
+#status{
+
+    margin-top:20px;
+
+    font-size:18px;
+
+    color:#2e7d32;
+
+    min-height:25px;
+
 }
+
 </style>
 
 </head>
@@ -65,53 +108,94 @@ button:hover{
 
 <h1>🏡 Il Rifugio Felice</h1>
 
-<p>
-Press the button below<br>
-to open the gate.
-</p>
+<p>Press the button below to open the gate.</p>
 
-<button onclick="openGate()">
-🚪 OPEN GATE
+<button id="gateButton">
+
+OPEN GATE
+
 </button>
 
-<div id="msg"></div>
+<div id="status"></div>
 
 </div>
 
 <script>
 
-const url="https://il-rifugio-felice-default-rtdb.europe-west1.firebasedatabase.app/gate/request_id.json";
+const firebaseUrl =
+"https://il-rifugio-felice-default-rtdb.europe-west1.firebasedatabase.app/gate/request_id.json";
 
-async function openGate(){
+const button = document.getElementById("gateButton");
+const status = document.getElementById("status");
 
-document.getElementById("msg").innerHTML="Sending command...";
+button.onclick = async () => {
 
-try{
+    button.disabled = true;
 
-const response=await fetch(url);
+    status.innerHTML="Opening gate...";
 
-const value=await response.json();
+    try{
 
-await fetch(url,{
-method:"PUT",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify(Number(value)+1)
-});
+        const response=await fetch(firebaseUrl);
 
-document.getElementById("msg").innerHTML="✅ Gate opening...";
+        const current=await response.json();
 
-}
-catch(e){
+        await fetch(firebaseUrl,{
 
-document.getElementById("msg").innerHTML="❌ Error";
+            method:"PUT",
 
-}
+            headers:{
 
-}
+                "Content-Type":"application/json"
+
+            },
+
+            body:JSON.stringify(current+1)
+
+        });
+
+    }
+
+    catch(e){
+
+        status.innerHTML="Connection error";
+
+        button.disabled=false;
+
+        return;
+
+    }
+
+    let seconds=10;
+
+    status.innerHTML="Gate opening... ("+seconds+")";
+
+    const timer=setInterval(()=>{
+
+        seconds--;
+
+        if(seconds<=0){
+
+            clearInterval(timer);
+
+            status.innerHTML="Ready";
+
+            button.disabled=false;
+
+        }
+
+        else{
+
+            status.innerHTML="Gate opening... ("+seconds+")";
+
+        }
+
+    },1000);
+
+};
 
 </script>
 
 </body>
+
 </html>

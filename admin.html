@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il Rifugio Felice - Admin</title>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial, Helvetica, sans-serif;
+  background:#f4f1e8;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+}
+
+.card{
+  width:90%;
+  max-width:420px;
+  background:white;
+  border-radius:22px;
+  padding:28px;
+  box-shadow:0 12px 35px rgba(0,0,0,.15);
+  text-align:center;
+}
+
+.logo{
+  width:100%;
+  max-width:300px;
+  margin-bottom:20px;
+}
+
+h1{
+  font-size:24px;
+  margin:0 0 8px;
+}
+
+.subtitle{
+  color:#666;
+  margin-bottom:25px;
+}
+
+.level{
+  font-size:52px;
+  font-weight:bold;
+  color:#2e7d32;
+  margin:15px 0;
+}
+
+.bar{
+  width:100%;
+  height:28px;
+  background:#ddd;
+  border-radius:20px;
+  overflow:hidden;
+  margin:18px 0;
+}
+
+.fill{
+  height:100%;
+  width:0%;
+  background:#2e7d32;
+  transition:.5s;
+}
+
+.data{
+  font-size:17px;
+  line-height:1.8;
+  color:#333;
+}
+
+button{
+  width:100%;
+  padding:18px;
+  font-size:22px;
+  font-weight:bold;
+  border:none;
+  border-radius:16px;
+  background:#2e7d32;
+  color:white;
+  margin-top:25px;
+}
+
+button:disabled{
+  background:#999;
+}
+
+.status{
+  margin-top:18px;
+  color:#666;
+  font-size:15px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <img src="./logo.png" class="logo" alt="Il Rifugio Felice">
+
+  <h1>Admin</h1>
+  <div class="subtitle">Livello vasca acqua piovana</div>
+
+  <div class="level" id="level">--%</div>
+
+  <div class="bar">
+    <div class="fill" id="fill"></div>
+  </div>
+
+  <div class="data">
+    💧 Litri: <span id="liters">--</span> L<br>
+    📏 Altezza: <span id="height">--</span> cm<br>
+    ⚡ Corrente: <span id="current">--</span> mA<br>
+    🔋 Tensione: <span id="voltage">--</span> V
+  </div>
+
+  <button id="gateButton">🚪 APRI CANCELLO</button>
+
+  <div class="status" id="status">Aggiornamento...</div>
+
+</div>
+
+<script>
+const dbBase = "https://il-rifugio-felice-default-rtdb.europe-west1.firebasedatabase.app";
+
+const levelEl = document.getElementById("level");
+const fillEl = document.getElementById("fill");
+const litersEl = document.getElementById("liters");
+const heightEl = document.getElementById("height");
+const currentEl = document.getElementById("current");
+const voltageEl = document.getElementById("voltage");
+const statusEl = document.getElementById("status");
+const gateButton = document.getElementById("gateButton");
+
+async function loadWater(){
+  try{
+    const res = await fetch(dbBase + "/water.json?v=" + Date.now());
+    const data = await res.json();
+
+    if(!data){
+      statusEl.innerHTML = "Nessun dato disponibile";
+      return;
+    }
+
+    const level = Number(data.level_percent || 0);
+
+    levelEl.innerHTML = level.toFixed(1) + "%";
+    fillEl.style.width = Math.max(0, Math.min(100, level)) + "%";
+
+    litersEl.innerHTML = Number(data.liters || 0).toFixed(0);
+    heightEl.innerHTML = Number(data.height_cm || 0).toFixed(1);
+    currentEl.innerHTML = Number(data.current_mA || 0).toFixed(2);
+    voltageEl.innerHTML = Number(data.voltage || 0).toFixed(3);
+
+    statusEl.innerHTML = "Ultimo aggiornamento: " + new Date().toLocaleTimeString();
+
+  }catch(e){
+    statusEl.innerHTML = "Errore lettura dati";
+  }
+}
+
+gateButton.onclick = async () => {
+  gateButton.disabled = true;
+  gateButton.innerHTML = "Invio comando...";
+
+  try{
+    const res = await fetch(dbBase + "/gate/request_id.json");
+    const current = await res.json();
+
+    await fetch(dbBase + "/gate/request_id.json", {
+      method:"PUT",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(Number(current) + 1)
+    });
+
+    gateButton.innerHTML = "✅ Comando inviato";
+
+  }catch(e){
+    gateButton.innerHTML = "Errore";
+  }
+
+  setTimeout(() => {
+    gateButton.innerHTML = "🚪 APRI CANCELLO";
+    gateButton.disabled = false;
+  }, 10000);
+};
+
+loadWater();
+setInterval(loadWater, 5000);
+</script>
+
+</body>
+</html>

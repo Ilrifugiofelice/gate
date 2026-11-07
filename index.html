@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -205,8 +204,36 @@ async function createRequest() {
   throw new Error("Too many simultaneous requests");
 }
 
+// Legge l'ultimo comando eseguito PRIMA di inviarne uno nuovo.
+// Restituisce -1 se il valore non esiste ancora.
+async function readAck() {
+
+  const response = await firebaseFetch(
+    ACK_URL + "?t=" + Date.now()
+  );
+
+  if (!response.ok) {
+    throw new Error("Cannot read Firebase");
+  }
+
+  const value = await response.json();
+
+  if (value === null) return -1;
+
+  const executed = Number(value);
+
+  if (!Number.isSafeInteger(executed)) {
+    throw new Error("Invalid ACK value");
+  }
+
+  return executed;
+}
+
 // Aspetta che l'ESP32 confermi la trasmissione RF.
-async function waitForAck(requestId) {
+// La conferma vale solo se last_executed è cambiato
+// rispetto a prima dell'invio: evita false conferme
+// se il contatore su Firebase viene azzerato.
+async function waitForAck(requestId, ackBefore) {
 
   const start = Date.now();
 
@@ -226,7 +253,8 @@ async function waitForAck(requestId) {
         if (
           value !== null &&
           Number.isSafeInteger(executed) &&
-          executed >= requestId
+          executed >= requestId &&
+          executed > ackBefore
         ) {
           return true;
         }
@@ -282,9 +310,11 @@ button.onclick = async () => {
   }
 
   let requestId;
+  let ackBefore;
 
   try {
 
+    ackBefore = await readAck();
     requestId = await createRequest();
 
   } catch (error) {
@@ -306,7 +336,7 @@ button.onclick = async () => {
   statusText.textContent =
     "Waiting for gate controller...";
 
-  const confirmed = await waitForAck(requestId);
+  const confirmed = await waitForAck(requestId, ackBefore);
 
   button.classList.remove("loading");
 
@@ -346,4 +376,3 @@ if ("serviceWorker" in navigator) {
 
 </body>
 </html>
-

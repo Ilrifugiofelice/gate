@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,85 +10,85 @@
 <meta name="theme-color" content="#2e7d32">
 
 <style>
-body{
-  margin:0;
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;
-  background:linear-gradient(180deg,#f7f7f2,#e8efe4);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  min-height:100vh;
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Arial, sans-serif;
+  background: linear-gradient(180deg, #f7f7f2, #e8efe4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
 }
 
-.card{
-  width:90%;
-  max-width:390px;
-  background:white;
-  padding:34px 26px;
-  border-radius:28px;
-  text-align:center;
-  box-shadow:0 18px 45px rgba(0,0,0,.18);
+.card {
+  width: 90%;
+  max-width: 390px;
+  box-sizing: border-box;
+  background: white;
+  padding: 34px 26px;
+  border-radius: 28px;
+  text-align: center;
+  box-shadow: 0 18px 45px rgba(0,0,0,.18);
 }
 
-.logo{
-  font-size:58px;
-  margin-bottom:10px;
-  animation:float 2.5s ease-in-out infinite;
+.logo {
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 25px;
+  border-radius: 18px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.15);
 }
 
-@keyframes float{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-6px)}
+p {
+  color: #555;
+  font-size: 18px;
+  margin: 18px 0 30px;
+  line-height: 1.5;
 }
 
-h1{
-  margin:0;
-  font-size:28px;
+button {
+  width: 100%;
+  padding: 22px;
+  font-size: 25px;
+  font-weight: 700;
+  border: none;
+  border-radius: 18px;
+  background: #2e7d32;
+  color: white;
+  cursor: pointer;
+  transition: .25s;
+  box-shadow: 0 8px 18px rgba(46,125,50,.35);
 }
 
-p{
-  color:#666;
-  font-size:18px;
-  margin:18px 0 30px;
+button:active {
+  transform: scale(.97);
 }
 
-button{
-  width:100%;
-  padding:22px;
-  font-size:25px;
-  font-weight:700;
-  border:none;
-  border-radius:18px;
-  background:#2e7d32;
-  color:white;
-  cursor:pointer;
-  transition:.25s;
-  box-shadow:0 8px 18px rgba(46,125,50,.35);
+button.loading {
+  background: #f9a825;
 }
 
-button:active{
-  transform:scale(.97);
+button.success {
+  background: #1565c0;
 }
 
-button.loading{
-  background:#f9a825;
+button.warning {
+  background: #c62828;
 }
 
-button.success{
-  background:#1565c0;
+button:disabled {
+  cursor: default;
+  box-shadow: none;
 }
 
-button:disabled{
-  background:#999;
-  box-shadow:none;
-}
-
-#status{
-  margin-top:24px;
-  font-size:18px;
-  font-weight:600;
-  min-height:26px;
-  color:#2e7d32;
+#status {
+  margin-top: 24px;
+  font-size: 17px;
+  font-weight: 600;
+  min-height: 45px;
+  color: #2e7d32;
+  line-height: 1.4;
 }
 </style>
 </head>
@@ -95,95 +96,254 @@ button:disabled{
 <body>
 
 <div class="card">
+
   <img
-src="logo.png"
-alt="Il Rifugio Felice"
-style="
-width:100%;
-max-width:320px;
-margin-bottom:25px;
-border-radius:18px;
-box-shadow:0 8px 20px rgba(0,0,0,.15);
-">
+    src="logo.png"
+    class="logo"
+    alt="Il Rifugio Felice"
+  >
 
-<p style="
-font-size:18px;
-color:#555;
-margin-bottom:30px;
-">
-Welcome!<br>
-Press the button below to open the gate.
-</p>
+  <p>
+    Welcome!<br>
+    Press the button below to open the gate.
+  </p>
 
-  <button id="gateButton">🔓 OPEN GATE</button>
+  <button id="gateButton">
+    🔓 OPEN GATE
+  </button>
 
-  <div id="status">Welcome</div>
+  <div id="status">Ready</div>
+
 </div>
 
 <script>
-const firebaseUrl =
-"https://il-rifugio-felice-default-rtdb.europe-west1.firebasedatabase.app/gate/request_id.json";
+const DATABASE =
+  "https://il-rifugio-felice-default-rtdb.europe-west1.firebasedatabase.app";
+
+const REQUEST_URL =
+  DATABASE + "/gate/request_id.json";
+
+const ACK_URL =
+  DATABASE + "/gate/last_executed.json";
 
 const button = document.getElementById("gateButton");
-const status = document.getElementById("status");
+const statusText = document.getElementById("status");
+
+const ACK_TIMEOUT_MS = 20000;
+const COOLDOWN_SECONDS = 10;
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function firebaseFetch(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    cache: "no-store"
+  });
+
+  return response;
+}
+
+// Incremento protetto con ETag Firebase.
+// Evita che due telefoni sovrascrivano lo stesso ID.
+async function createRequest() {
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+
+    const read = await firebaseFetch(REQUEST_URL, {
+      headers: {
+        "X-Firebase-ETag": "true"
+      }
+    });
+
+    if (!read.ok) {
+      throw new Error("Cannot read Firebase");
+    }
+
+    const etag = read.headers.get("ETag");
+
+    if (!etag) {
+      throw new Error("Firebase ETag unavailable");
+    }
+
+    const currentValue = await read.json();
+    const current = Number(currentValue ?? 0);
+
+    if (!Number.isSafeInteger(current) || current < 0) {
+      throw new Error("Invalid request ID");
+    }
+
+    const nextId = current + 1;
+
+    if (!Number.isSafeInteger(nextId)) {
+      throw new Error("Request ID limit");
+    }
+
+    const write = await firebaseFetch(REQUEST_URL, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "If-Match": etag
+      },
+      body: JSON.stringify(nextId)
+    });
+
+    if (write.ok) {
+      return nextId;
+    }
+
+    if (write.status !== 412) {
+      throw new Error("Cannot write Firebase");
+    }
+
+    // Un altro telefono ha scritto nel frattempo.
+    // Riproviamo con il nuovo valore.
+    await sleep(200);
+  }
+
+  throw new Error("Too many simultaneous requests");
+}
+
+// Aspetta che l'ESP32 confermi la trasmissione RF.
+async function waitForAck(requestId) {
+
+  const start = Date.now();
+
+  while (Date.now() - start < ACK_TIMEOUT_MS) {
+
+    try {
+
+      const response = await firebaseFetch(
+        ACK_URL + "?t=" + Date.now()
+      );
+
+      if (response.ok) {
+
+        const value = await response.json();
+        const executed = Number(value);
+
+        if (
+          value !== null &&
+          Number.isSafeInteger(executed) &&
+          executed >= requestId
+        ) {
+          return true;
+        }
+      }
+
+    } catch (error) {
+      console.log("ACK check retry:", error);
+    }
+
+    await sleep(800);
+  }
+
+  return false;
+}
+
+async function countdown() {
+
+  for (let seconds = COOLDOWN_SECONDS;
+       seconds > 0;
+       seconds--) {
+
+    statusText.textContent =
+      "Please wait " + seconds + " seconds";
+
+    await sleep(1000);
+  }
+}
+
+function resetButton() {
+
+  button.classList.remove(
+    "loading", "success", "warning"
+  );
+
+  button.textContent = "🔓 OPEN GATE";
+  statusText.textContent = "Ready";
+  button.disabled = false;
+}
 
 button.onclick = async () => {
+
+  if (button.disabled) return;
+
   button.disabled = true;
+  button.classList.remove("success", "warning");
   button.classList.add("loading");
-  button.innerHTML = "SENDING...";
-  status.innerHTML = "Sending command...";
+
+  button.textContent = "⏳ SENDING...";
+  statusText.textContent = "Sending command...";
 
   if (navigator.vibrate) {
     navigator.vibrate(80);
   }
 
+  let requestId;
+
   try {
-    const response = await fetch(firebaseUrl);
-    const current = await response.json();
 
-    await fetch(firebaseUrl, {
-      method: "PUT",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify(Number(current) + 1)
-    });
+    requestId = await createRequest();
+
+  } catch (error) {
+
+    console.error(error);
 
     button.classList.remove("loading");
-    button.classList.add("success");
-    button.innerHTML="🔓 OPENING...";
-    status.innerHTML = "Gate opening...";
+    button.classList.add("warning");
+    button.textContent = "⚠️ CONNECTION ERROR";
 
-    if (navigator.vibrate) {
-      navigator.vibrate([80,80,120]);
-    }
+    statusText.textContent =
+      "Unable to send the request. Please try again.";
 
-  } catch(e) {
-    button.classList.remove("loading");
-    button.innerHTML = "🔓 OPEN GATE";
-    status.innerHTML = "Connection error";
-    button.disabled = false;
+    await sleep(5000);
+    resetButton();
     return;
   }
 
-  let seconds = 10;
+  statusText.textContent =
+    "Waiting for gate controller...";
 
-  const timer = setInterval(() => {
-    seconds--;
-    status.innerHTML = "Please wait " + seconds + " seconds";
+  const confirmed = await waitForAck(requestId);
 
-    if (seconds <= 0) {
-      clearInterval(timer);
-      button.classList.remove("success");
-      button.innerHTML = "🔓 OPEN GATE";
-      status.innerHTML = "Ready";
-      button.disabled = false;
+  button.classList.remove("loading");
+
+  if (confirmed) {
+
+    button.classList.add("success");
+    button.textContent = "✅ COMMAND SENT";
+
+    statusText.textContent =
+      "Gate controller has transmitted the signal.";
+
+    if (navigator.vibrate) {
+      navigator.vibrate([80, 80, 120]);
     }
-  }, 1000);
+
+  } else {
+
+    button.classList.add("warning");
+    button.textContent = "⚠️ NO CONFIRMATION";
+
+    statusText.textContent =
+      "Please check the gate before trying again.";
+  }
+
+  await countdown();
+  resetButton();
 };
 
+// Mantiene la PWA già presente.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js");
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js")
+      .catch(error => console.log(error));
+  });
 }
 </script>
 
 </body>
 </html>
+
